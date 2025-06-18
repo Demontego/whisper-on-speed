@@ -1,0 +1,36 @@
+{
+  "test_name": "batch_transcription_performance",
+  "timestamp": "2025-06-18T23:25:55.002978",
+  "model_id": "openai/whisper-large-v3-turbo",
+  "num_runs": 3,
+  "num_files": 2,
+  "execution_times": [
+    22.057056188583374,
+    21.284989595413208,
+    21.00554847717285
+  ],
+  "statistics": {
+    "average_time": 21.449198087056477,
+    "minimum_time": 21.00554847717285,
+    "maximum_time": 22.057056188583374,
+    "average_time_per_file": 10.724599043528238,
+    "std_deviation": 0.44470247607043745
+  },
+  "rtf_metrics": {
+    "average_rtf": 9.717472846958243,
+    "minimum_rtf": 9.449674436060212,
+    "maximum_rtf": 9.922711621955846,
+    "average_rtf_per_file": 9.717472846958243,
+    "total_audio_seconds_per_processing_second": 9.717472846958243,
+    "processing_faster_than_realtime": true
+  },
+  "audio_info": {
+    "sample_rate": 16000,
+    "total_files": 2,
+    "total_audio_duration": 208.432,
+    "file_durations": [
+      178.432,
+      30.0
+    ]
+  }
+}
