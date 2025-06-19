@@ -14,9 +14,9 @@ class ASRChunk(BaseModel):
 
 
 class ASRonSPEED:
-    def __init__(self, model_id: str, seconds_per_chunk: int = 10, batch_size: int = 16):
+    def __init__(self, model_id: str, seconds_per_chunk: int = 10, batch_size: int = 16, device: str = 'cuda'):
         self.seconds_per_chunk = seconds_per_chunk
-        self.device = torch.device('cuda')
+        self.device = torch.device(device)
         self.is_warmed_up = False
         self.logger = logging.getLogger(__name__)
 
@@ -80,7 +80,7 @@ class ASRonSPEED:
             )
         return chunks
 
-    def procces_audio(self, audio: np.ndarray) -> list[ASRChunk]:
+    def process_audio(self, audio: np.ndarray) -> list[ASRChunk]:
         """
         Process one audio file
         Args:

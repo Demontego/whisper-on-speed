@@ -1,0 +1,43 @@
+{
+  "test_name": "warmup_vs_cold_performance",
+  "timestamp": "2025-06-19T00:23:03.809102",
+  "model_id": "openai/whisper-large-v3-turbo",
+  "results": {
+    "cold_start_time": 19.399680137634277,
+    "warmed_up_time": 19.250109434127808,
+    "speedup": 1.007769862504849,
+    "warmup_steps": 2
+  },
+  "rtf_metrics": {
+    "cold_rtf": 9.197677422209248,
+    "warm_rtf": 9.269142111143768,
+    "rtf_improvement": 1.007769862504849,
+    "cold_faster_than_realtime": true,
+    "warm_faster_than_realtime": true
+  },
+  "audio_info": {
+    "sample_rate": 16000,
+    "duration_seconds": 178.432
+  },
+  "hardware_info": {
+    "gpu": {
+      "cuda_available": true,
+      "device_count": 1,
+      "current_device": 0,
+      "device_name": "NVIDIA GeForce RTX 3090",
+      "device_capability": [
+        8,
+        6
+      ],
+      "memory_info": {
+        "total_memory": 25769279488,
+        "memory_allocated": 8519680,
+        "memory_reserved": 7975469056,
+        "max_memory_allocated": 7073295872,
+        "max_memory_reserved": 7975469056
+      },
+      "driver_version": "12.6",
+      "torch_version": "2.7.1+cu126"
+    }
+  }
+}

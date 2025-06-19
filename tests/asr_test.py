@@ -6,8 +6,46 @@ from pathlib import Path
 
 import librosa
 import pytest
+import torch
 
 from src.core.asr import ASRChunk, ASRonSPEED
+
+
+def get_gpu_info():
+    """Get GPU information for benchmarking"""
+    gpu_info = {
+        "cuda_available": torch.cuda.is_available(),
+        "device_count": torch.cuda.device_count() if torch.cuda.is_available() else 0,
+        "current_device": None,
+        "device_name": None,
+        "device_capability": None,
+        "memory_info": None,
+        "driver_version": None,
+        "torch_version": torch.__version__
+    }
+    
+    if torch.cuda.is_available():
+        current_device = torch.cuda.current_device()
+        gpu_info.update({
+            "current_device": current_device,
+            "device_name": torch.cuda.get_device_name(current_device),
+            "device_capability": torch.cuda.get_device_capability(current_device),
+            "memory_info": {
+                "total_memory": torch.cuda.get_device_properties(current_device).total_memory,
+                "memory_allocated": torch.cuda.memory_allocated(current_device),
+                "memory_reserved": torch.cuda.memory_reserved(current_device),
+                "max_memory_allocated": torch.cuda.max_memory_allocated(current_device),
+                "max_memory_reserved": torch.cuda.max_memory_reserved(current_device)
+            }
+        })
+        
+        # Try to get CUDA driver version
+        try:
+            gpu_info["driver_version"] = torch.version.cuda  # type: ignore
+        except:
+            gpu_info["driver_version"] = "unknown"
+    
+    return gpu_info
 
 
 class TestWhisperASR:
@@ -37,7 +75,7 @@ class TestWhisperASR:
         audio_file = test_audio_files[0]
         
         # Transcription
-        result = asr_model.procces_audio(audio_file)
+        result = asr_model.process_audio(audio_file)
         
         # Result checks
         assert isinstance(result, list)
@@ -119,6 +157,9 @@ class TestWhisperASRBenchmark:
     @pytest.mark.benchmark
     def test_single_transcription_performance(self, asr_model_warmed, test_audio_files, benchmark_results_dir):
         """Benchmark test for single file transcription performance"""
+        # Get GPU info before benchmark
+        gpu_info = get_gpu_info()
+        
         # Measure execution time
         num_runs = 5
         times = []
@@ -126,7 +167,7 @@ class TestWhisperASRBenchmark:
         
         for _ in range(num_runs):
             start_time = time.time()
-            result = asr_model_warmed.procces_audio(test_audio_files[0])
+            result = asr_model_warmed.process_audio(test_audio_files[0])
             end_time = time.time()
             
             times.append(end_time - start_time)
@@ -170,6 +211,9 @@ class TestWhisperASRBenchmark:
             "audio_info": {
                 "sample_rate": 16000,
                 "duration_seconds": audio_duration
+            },
+            "hardware_info": {
+                "gpu": gpu_info
             }
         }
         
@@ -177,6 +221,10 @@ class TestWhisperASRBenchmark:
         self._save_benchmark_results(benchmark_results_dir, "single_transcription", results_data)
         
         print(f"\n=== Single Transcription Benchmark ===")
+        print(f"GPU: {gpu_info['device_name'] if gpu_info['cuda_available'] else 'CPU only'}")
+        if gpu_info['cuda_available']:
+            memory_gb = gpu_info['memory_info']['total_memory'] / (1024**3)
+            print(f"GPU Memory: {memory_gb:.1f}GB")
         print(f"Audio duration: {audio_duration:.2f}s")
         print(f"Number of runs: {num_runs}")
         print(f"Average time: {avg_time:.3f}s")
@@ -193,6 +241,9 @@ class TestWhisperASRBenchmark:
     @pytest.mark.benchmark
     def test_batch_transcription_performance(self, asr_model_warmed, test_audio_files, benchmark_results_dir):
         """Benchmark test for batch transcription performance"""
+        # Get GPU info before benchmark
+        gpu_info = get_gpu_info()
+        
         # Measure execution time
         num_runs = 3
         times = []
@@ -255,6 +306,9 @@ class TestWhisperASRBenchmark:
                 "total_files": len(test_audio_files),
                 "total_audio_duration": total_audio_duration,
                 "file_durations": [len(audio) / 16000 for audio in test_audio_files]
+            },
+            "hardware_info": {
+                "gpu": gpu_info
             }
         }
         
@@ -262,6 +316,10 @@ class TestWhisperASRBenchmark:
         self._save_benchmark_results(benchmark_results_dir, "batch_transcription", results_data)
         
         print(f"\n=== Batch Transcription Benchmark ===")
+        print(f"GPU: {gpu_info['device_name'] if gpu_info['cuda_available'] else 'CPU only'}")
+        if gpu_info['cuda_available']:
+            memory_gb = gpu_info['memory_info']['total_memory'] / (1024**3)
+            print(f"GPU Memory: {memory_gb:.1f}GB")
         print(f"Total audio duration: {total_audio_duration:.2f}s")
         print(f"Number of files: {len(test_audio_files)}")
         print(f"Number of runs: {num_runs}")
@@ -281,12 +339,15 @@ class TestWhisperASRBenchmark:
     @pytest.mark.benchmark
     def test_warmup_vs_cold_performance(self, test_audio_files, benchmark_results_dir):
         """Benchmark comparison of performance with and without warmup"""
+        # Get GPU info before benchmark
+        gpu_info = get_gpu_info()
+        
         audio_duration = len(test_audio_files[0]) / 16000
         
         # Test without warmup
         cold_model = ASRonSPEED(model_id="openai/whisper-large-v3-turbo")
         start_time = time.time()
-        cold_result = cold_model.procces_audio(test_audio_files[0])
+        cold_result = cold_model.process_audio(test_audio_files[0])
         cold_time = time.time() - start_time
         
         # Test with warmup
@@ -294,7 +355,7 @@ class TestWhisperASRBenchmark:
         warm_model.warmup(num_warmup_steps=2)
         
         start_time = time.time()
-        warm_result = warm_model.procces_audio(test_audio_files[0])
+        warm_result = warm_model.process_audio(test_audio_files[0])
         warm_time = time.time() - start_time
         
         # Check results
@@ -329,6 +390,9 @@ class TestWhisperASRBenchmark:
             "audio_info": {
                 "sample_rate": 16000,
                 "duration_seconds": audio_duration
+            },
+            "hardware_info": {
+                "gpu": gpu_info
             }
         }
         
@@ -336,6 +400,10 @@ class TestWhisperASRBenchmark:
         self._save_benchmark_results(benchmark_results_dir, "warmup_comparison", results_data)
         
         print(f"\n=== Warmup vs Cold Performance Comparison ===")
+        print(f"GPU: {gpu_info['device_name'] if gpu_info['cuda_available'] else 'CPU only'}")
+        if gpu_info['cuda_available']:
+            memory_gb = gpu_info['memory_info']['total_memory'] / (1024**3)
+            print(f"GPU Memory: {memory_gb:.1f}GB")
         print(f"Audio duration: {audio_duration:.2f}s")
         print(f"Cold start time: {cold_time:.3f}s")
         print(f"Warmed up time: {warm_time:.3f}s")
@@ -348,3 +416,154 @@ class TestWhisperASRBenchmark:
         
         # Usually warmup should speed up subsequent calls
         # But for the first call it may not always be noticeable
+    
+    @pytest.mark.benchmark
+    def test_cpu_vs_cuda_performance(self, test_audio_files, benchmark_results_dir):
+        """Benchmark comparison of CPU vs CUDA performance"""
+        # Get GPU info before benchmark
+        gpu_info = get_gpu_info()
+        
+        audio_duration = len(test_audio_files[0]) / 16000
+        
+        # Skip test if CUDA is not available
+        if not torch.cuda.is_available():
+            pytest.skip("CUDA not available, skipping CPU vs CUDA comparison")
+        
+        print(f"\n=== CPU vs CUDA Performance Comparison ===")
+        print(f"Audio duration: {audio_duration:.2f}s")
+        
+        # Test with CPU
+        print("Testing CPU performance...")
+        cpu_model = ASRonSPEED(model_id="openai/whisper-large-v3-turbo", device='cpu')
+        cpu_model.warmup(num_warmup_steps=1)  # Minimal warmup for CPU
+        
+        cpu_times = []
+        num_runs = 3  # Fewer runs for CPU as it's typically slower
+        
+        for i in range(num_runs):
+            print(f"  CPU run {i+1}/{num_runs}...")
+            start_time = time.time()
+            cpu_result = cpu_model.process_audio(test_audio_files[0])
+            cpu_time = time.time() - start_time
+            cpu_times.append(cpu_time)
+            
+            # Check result validity
+            assert isinstance(cpu_result, list)
+            assert len(cpu_result) > 0
+            assert cpu_result[0].text is not None
+        
+        cpu_avg_time = sum(cpu_times) / len(cpu_times)
+        cpu_rtf = audio_duration / cpu_avg_time
+        
+        # Test with CUDA  
+        print("Testing CUDA performance...")
+        cuda_model = ASRonSPEED(model_id="openai/whisper-large-v3-turbo", device='cuda')
+        cuda_model.warmup(num_warmup_steps=2)
+        
+        cuda_times = []
+        
+        for i in range(num_runs):
+            print(f"  CUDA run {i+1}/{num_runs}...")
+            start_time = time.time()
+            cuda_result = cuda_model.process_audio(test_audio_files[0])
+            cuda_time = time.time() - start_time
+            cuda_times.append(cuda_time)
+            
+            # Check result validity
+            assert isinstance(cuda_result, list)
+            assert len(cuda_result) > 0
+            assert cuda_result[0].text is not None
+        
+        cuda_avg_time = sum(cuda_times) / len(cuda_times)
+        cuda_rtf = audio_duration / cuda_avg_time
+        
+        # Calculate speedup and comparison metrics
+        speedup = cpu_avg_time / cuda_avg_time if cuda_avg_time > 0 else float('inf')
+        rtf_improvement = cuda_rtf / cpu_rtf if cpu_rtf > 0 else float('inf')
+        
+        # Performance statistics
+        cpu_stats = {
+            "average_time": cpu_avg_time,
+            "minimum_time": min(cpu_times),
+            "maximum_time": max(cpu_times),
+            "std_deviation": (sum((t - cpu_avg_time) ** 2 for t in cpu_times) / len(cpu_times)) ** 0.5,
+            "rtf": cpu_rtf
+        }
+        
+        cuda_stats = {
+            "average_time": cuda_avg_time,
+            "minimum_time": min(cuda_times),
+            "maximum_time": max(cuda_times),
+            "std_deviation": (sum((t - cuda_avg_time) ** 2 for t in cuda_times) / len(cuda_times)) ** 0.5,
+            "rtf": cuda_rtf
+        }
+        
+        # Prepare results data
+        results_data = {
+            "test_name": "cpu_vs_cuda_performance",
+            "timestamp": datetime.datetime.now().isoformat(),
+            "model_id": "openai/whisper-large-v3-turbo",
+            "num_runs": num_runs,
+            "audio_info": {
+                "sample_rate": 16000,
+                "duration_seconds": audio_duration
+            },
+            "cpu_results": {
+                "execution_times": cpu_times,
+                "statistics": cpu_stats,
+                "device": "cpu",
+                "faster_than_realtime": cpu_rtf > 1.0
+            },
+            "cuda_results": {
+                "execution_times": cuda_times,
+                "statistics": cuda_stats,
+                "device": "cuda",
+                "faster_than_realtime": cuda_rtf > 1.0
+            },
+            "comparison": {
+                "cuda_speedup": speedup,
+                "rtf_improvement": rtf_improvement,
+                "cpu_vs_cuda_time_ratio": cpu_avg_time / cuda_avg_time if cuda_avg_time > 0 else float('inf'),
+                "winner": "cuda" if cuda_avg_time < cpu_avg_time else "cpu"
+            },
+            "hardware_info": {
+                "gpu": gpu_info
+            }
+        }
+        
+        # Save results
+        self._save_benchmark_results(benchmark_results_dir, "cpu_vs_cuda", results_data)
+        
+        # Print detailed comparison
+        print(f"\n=== Results Summary ===")
+        print(f"CPU Performance:")
+        print(f"  Average time: {cpu_avg_time:.3f}s")
+        print(f"  RTF: {cpu_rtf:.2f}x")
+        print(f"  Faster than real-time: {'Yes' if cpu_rtf > 1.0 else 'No'}")
+        
+        print(f"\nCUDA Performance:")
+        print(f"  GPU: {gpu_info['device_name']}")
+        if gpu_info['cuda_available']:
+            memory_gb = gpu_info['memory_info']['total_memory'] / (1024**3)
+            print(f"  GPU Memory: {memory_gb:.1f}GB")
+        print(f"  Average time: {cuda_avg_time:.3f}s")
+        print(f"  RTF: {cuda_rtf:.2f}x")
+        print(f"  Faster than real-time: {'Yes' if cuda_rtf > 1.0 else 'No'}")
+        
+        print(f"\nComparison:")
+        print(f"  CUDA Speedup: {speedup:.2f}x")
+        print(f"  RTF Improvement: {rtf_improvement:.2f}x")
+        print(f"  Winner: {'CUDA' if speedup > 1.0 else 'CPU'}")
+        
+        if speedup > 1.0:
+            print(f"  CUDA is {speedup:.1f}x faster than CPU")
+        else:
+            print(f"  CPU is {1/speedup:.1f}x faster than CUDA (unexpected)")
+        
+        # Performance assertions
+        assert cpu_avg_time > 0, "CPU processing time should be positive"
+        assert cuda_avg_time > 0, "CUDA processing time should be positive"
+        
+        # Usually CUDA should be faster, but not always guaranteed
+        if speedup < 0.5:  # If CPU is more than 2x faster than CUDA, something might be wrong
+            print(f"WARNING: CPU appears significantly faster than CUDA (speedup: {speedup:.2f}x)")
