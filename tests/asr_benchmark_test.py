@@ -233,11 +233,9 @@ class TestASRBenchmark:
                 'faster_than_realtime': cuda_rtf > 1.0,
             },
             'comparison': {
-                'comparison': {
-                    'cuda_speedup': speedup,
-                    'rtf_improvement': rtf_improvement,
-                    'winner': 'cuda' if cuda_stats['average_time'] < cpu_stats['average_time'] else 'cpu',
-                },
+                'cuda_speedup': speedup,
+                'rtf_improvement': rtf_improvement,
+                'winner': 'cuda' if cuda_stats['average_time'] < cpu_stats['average_time'] else 'cpu',
             },
             'hardware_info': {'gpu': gpu_info},
         }

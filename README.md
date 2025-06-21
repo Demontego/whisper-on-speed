@@ -28,7 +28,7 @@ asr.warmup()
 audio, _ = librosa.load("audio.wav", sr=16000)
 
 # Транскрипция одного файла
-chunks = asr.procces_audio(audio)
+chunks = asr.process_audio(audio)
 for chunk in chunks:
     print(f"{chunk.start_time:.2f}s - {chunk.end_time:.2f}s: {chunk.text}")
 

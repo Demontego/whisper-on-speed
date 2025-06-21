@@ -65,7 +65,9 @@ class ASRonSPEED:
             if len(text) == 0:
                 continue
             start_time, end_time = chunk.get('timestamp', (None, None))
-            if start_time is None and end_time is None and start_time > end_time:
+            if start_time is None and end_time is None:
+                continue
+            if start_time is not None and end_time is not None and start_time > end_time:
                 continue
             chunks.append(
                 ASRChunk(
