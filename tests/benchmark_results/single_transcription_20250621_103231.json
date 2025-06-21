@@ -1,26 +1,26 @@
 {
   "test_name": "single_transcription_performance",
-  "timestamp": "2025-06-19T00:21:14.338658",
+  "timestamp": "2025-06-21T10:32:31.601009",
   "model_id": "openai/whisper-large-v3-turbo",
   "num_runs": 5,
   "execution_times": [
-    19.212392807006836,
-    19.321149110794067,
-    19.754689931869507,
-    19.11186456680298,
-    19.25881838798523
+    22.368494272232056,
+    18.13868546485901,
+    18.00245213508606,
+    21.126675844192505,
+    18.0095431804657
   ],
   "statistics": {
-    "average_time": 19.331782960891722,
-    "minimum_time": 19.11186456680298,
-    "maximum_time": 19.754689931869507,
-    "std_deviation": 0.22221850628251458
+    "average_time": 19.529170179367064,
+    "minimum_time": 18.00245213508606,
+    "maximum_time": 22.368494272232056,
+    "std_deviation": 1.8540424804883364
   },
   "rtf_metrics": {
-    "average_rtf": 9.22998154701864,
-    "minimum_rtf": 9.03238677070513,
-    "maximum_rtf": 9.33619006017517,
-    "avg_audio_seconds_per_processing_second": 9.22998154701864,
+    "average_rtf": 9.136691337172982,
+    "minimum_rtf": 7.976933888728623,
+    "maximum_rtf": 9.911538642685413,
+    "avg_audio_seconds_per_processing_second": 9.136691337172982,
     "processing_faster_than_realtime": true
   },
   "audio_info": {
@@ -39,10 +39,10 @@
       ],
       "memory_info": {
         "total_memory": 25769279488,
-        "memory_allocated": 1626439680,
-        "memory_reserved": 7975469056,
-        "max_memory_allocated": 7073295872,
-        "max_memory_reserved": 7975469056
+        "memory_allocated": 1627187200,
+        "memory_reserved": 1916796928,
+        "max_memory_allocated": 1749493760,
+        "max_memory_reserved": 1916796928
       },
       "driver_version": "12.6",
       "torch_version": "2.7.1+cu126"

@@ -1,17 +1,17 @@
 {
   "test_name": "warmup_vs_cold_performance",
-  "timestamp": "2025-06-19T00:23:03.809102",
+  "timestamp": "2025-06-21T10:34:21.956729",
   "model_id": "openai/whisper-large-v3-turbo",
   "results": {
-    "cold_start_time": 19.399680137634277,
-    "warmed_up_time": 19.250109434127808,
-    "speedup": 1.007769862504849,
+    "cold_start_time": 21.546972274780273,
+    "warmed_up_time": 17.805842399597168,
+    "speedup": 1.2101068734196896,
     "warmup_steps": 2
   },
   "rtf_metrics": {
-    "cold_rtf": 9.197677422209248,
-    "warm_rtf": 9.269142111143768,
-    "rtf_improvement": 1.007769862504849,
+    "cold_rtf": 8.281070663874493,
+    "warm_rtf": 10.020980529628677,
+    "rtf_improvement": 1.2101068734196898,
     "cold_faster_than_realtime": true,
     "warm_faster_than_realtime": true
   },
@@ -32,9 +32,9 @@
       "memory_info": {
         "total_memory": 25769279488,
         "memory_allocated": 8519680,
-        "memory_reserved": 7975469056,
-        "max_memory_allocated": 7073295872,
-        "max_memory_reserved": 7975469056
+        "memory_reserved": 8099201024,
+        "max_memory_allocated": 7075975680,
+        "max_memory_reserved": 8099201024
       },
       "driver_version": "12.6",
       "torch_version": "2.7.1+cu126"

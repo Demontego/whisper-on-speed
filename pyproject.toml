@@ -81,7 +81,6 @@ exclude = [
     "docs/*",
     "drafts/*",
     "archives/*",
-    "tests/*",
     "notebooks/*"
 ]
 line-length = 120

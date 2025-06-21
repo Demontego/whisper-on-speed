@@ -6,6 +6,8 @@ from pydantic import BaseModel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
 
+from src.core.config import ASRConfig
+
 
 class ASRChunk(BaseModel):
     text: str
@@ -14,51 +16,45 @@ class ASRChunk(BaseModel):
 
 
 class ASRonSPEED:
-    def __init__(self, model_id: str, seconds_per_chunk: int = 10, batch_size: int = 16, device: str = 'cuda'):
-        self.seconds_per_chunk = seconds_per_chunk
-        self.device = torch.device(device)
+    def __init__(self, config: ASRConfig):
+        self.config = config
+        self.seconds_per_chunk = config.seconds_per_chunk
+        self.device = (
+            torch.device(config.device) if config.device != 'cpu' and torch.cuda.is_available() else torch.device('cpu')
+        )
         self.is_warmed_up = False
         self.logger = logging.getLogger(__name__)
 
+        self.generate_kwargs = config.generation_config.model_dump()
+        self.pipe = self._initialize_model()
+
+    def _initialize_model(self) -> AutomaticSpeechRecognitionPipeline:
+        """Initialize the model and pipeline"""
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            pretrained_model_name_or_path=model_id,
-            torch_dtype=torch.float16,
-            low_cpu_mem_usage=True,
-            use_safetensors=True,
-            attn_implementation='sdpa',
+            pretrained_model_name_or_path=self.config.model_id,
+            torch_dtype=self.config.get_torch_dtype(),
+            low_cpu_mem_usage=self.config.model_settings.low_cpu_mem_usage,
+            use_safetensors=self.config.model_settings.use_safetensors,
+            attn_implementation=self.config.model_settings.attn_implementation,
         )
         model.to(self.device)
 
-        self.generate_kwargs = {
-            'max_new_tokens': 324,
-            'num_beams': 3,
-            'condition_on_prev_tokens': True,
-            'compression_ratio_threshold': 1.35,
-            'temperature': (0.0, 0.2, 0.4, 0.6, 0.8, 1.0),
-            'logprob_threshold': -1.0,
-            'use_cache': True,
-        }
+        processor = AutoProcessor.from_pretrained(self.config.model_id)
 
-        processor = AutoProcessor.from_pretrained(model_id)
-
-        self.pipe = AutomaticSpeechRecognitionPipeline(
+        return AutomaticSpeechRecognitionPipeline(
             model=model,
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
             chunk_length_s=self.seconds_per_chunk,
-            batch_size=batch_size,
-            torch_dtype=torch.float16,
+            batch_size=self.config.batch_size,
+            torch_dtype=self.config.get_torch_dtype(),
             device=self.device,
         )
 
-    def warmup(self, num_warmup_steps: int = 3) -> None:
-        """
-        Warmup the model
-        Args:
-            num_warmup_steps: int - number of warmup steps
-        """
-        audio = np.ones(16_000 * self.seconds_per_chunk) / 2.0
-        for _ in range(num_warmup_steps):
+    def warmup(self, num_warmup_steps: int | None = None) -> None:
+        steps = num_warmup_steps or self.config.warmup_steps
+        audio = np.ones(self.config.sample_rate * self.seconds_per_chunk) / 2.0
+        for _ in range(steps):
             self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
         self.is_warmed_up = True
 

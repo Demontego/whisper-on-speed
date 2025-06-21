@@ -1,0 +1,57 @@
+{
+  "test_name": "batch_transcription_performance",
+  "timestamp": "2025-06-21T10:33:36.407649",
+  "model_id": "openai/whisper-large-v3-turbo",
+  "num_runs": 3,
+  "num_files": 2,
+  "execution_times": [
+    20.62028479576111,
+    20.146944522857666,
+    20.082897901535034
+  ],
+  "statistics": {
+    "average_time": 20.28337574005127,
+    "minimum_time": 20.082897901535034,
+    "maximum_time": 20.62028479576111,
+    "std_deviation": 0.23966125578989278,
+    "average_time_per_file": 10.141687870025635
+  },
+  "rtf_metrics": {
+    "average_rtf": 10.276001523180044,
+    "minimum_rtf": 10.108104813510973,
+    "maximum_rtf": 10.37858186711533,
+    "avg_audio_seconds_per_processing_second": 10.276001523180044,
+    "processing_faster_than_realtime": true,
+    "average_rtf_per_file": 10.276001523180044
+  },
+  "audio_info": {
+    "sample_rate": 16000,
+    "total_files": 2,
+    "total_audio_duration": 208.432,
+    "file_durations": [
+      178.432,
+      30.0
+    ]
+  },
+  "hardware_info": {
+    "gpu": {
+      "cuda_available": true,
+      "device_count": 1,
+      "current_device": 0,
+      "device_name": "NVIDIA GeForce RTX 3090",
+      "device_capability": [
+        8,
+        6
+      ],
+      "memory_info": {
+        "total_memory": 25769279488,
+        "memory_allocated": 1627226112,
+        "memory_reserved": 8099201024,
+        "max_memory_allocated": 7075975680,
+        "max_memory_reserved": 8099201024
+      },
+      "driver_version": "12.6",
+      "torch_version": "2.7.1+cu126"
+    }
+  }
+}
