@@ -161,3 +161,37 @@ def print_performance_summary(
     print(f'Average RTF: {rtf_metrics["average_rtf"]:.2f}x (аудио секунд за секунду обработки)')
     print(f'RTF range: {rtf_metrics["minimum_rtf"]:.2f}x - {rtf_metrics["maximum_rtf"]:.2f}x')
     print(f'Processing {"faster" if rtf_metrics["processing_faster_than_realtime"] else "slower"} than real-time')
+
+
+def validate_asr_results(results, expected_count=None, check_timestamps=True):
+    """
+    Универсальная функция для проверки результатов ASR
+
+    Args:
+        results: результат ASR (может быть list для одиночного результата или list of lists для batch)
+        expected_count: ожидаемое количество результатов для batch (None для одиночного результата)
+        check_timestamps: проверять ли временные метки
+    """
+    if expected_count is not None:
+        # Batch результаты
+        assert isinstance(results, list)
+        assert len(results) == expected_count
+
+        for result in results:
+            _validate_single_result(result, check_timestamps)
+    else:
+        # Одиночный результат
+        _validate_single_result(results, check_timestamps)
+
+
+def _validate_single_result(result, check_timestamps=True):
+    """Проверка одиночного результата ASR"""
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert isinstance(result[0], ASRChunk)
+    assert result[0].text is not None
+    assert len(result[0].text) > 0
+
+    if check_timestamps and result[0].start_time is not None and result[0].end_time is not None:
+        assert result[0].start_time >= 0
+        assert result[0].end_time > result[0].start_time

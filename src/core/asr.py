@@ -36,7 +36,6 @@ class ASRonSPEED:
             torch_dtype=self.config.get_torch_dtype(),
             low_cpu_mem_usage=self.config.model_settings.low_cpu_mem_usage,
             use_safetensors=self.config.model_settings.use_safetensors,
-            attn_implementation='sdpa',
         )
         model.to(self.device)
 

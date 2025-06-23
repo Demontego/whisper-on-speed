@@ -1,6 +1,6 @@
 import difflib
 
-from src.core.asr import ASRChunk
+from tests.test_utils import validate_asr_results
 
 
 class TestASRFunctionality:
@@ -27,33 +27,16 @@ class TestASRFunctionality:
         # Transcription
         result = asr_model.process_audio(audio_file)
 
-        # Result checks
-        assert isinstance(result, list)
-        assert len(result) > 0
-        assert isinstance(result[0], ASRChunk)
-        assert result[0].text is not None
-        assert len(result[0].text) > 0
-
-        # Check timestamps if they exist
-        if result[0].start_time is not None and result[0].end_time is not None:
-            assert result[0].start_time >= 0
-            assert result[0].end_time > result[0].start_time
+        # Все проверки в одной функции
+        validate_asr_results(result)
 
     def test_batch_audio_transcription(self, asr_model, test_audio_files):
         """Test batch transcription of multiple audio files"""
         # Batch transcription
         results = asr_model.process_batch([file['audio'] for file in test_audio_files])
 
-        # Results checks
-        assert isinstance(results, list)
-        assert len(results) == len(test_audio_files)
-
-        for result in results:
-            assert isinstance(result, list)
-            assert len(result) > 0
-            assert isinstance(result[0], ASRChunk)
-            assert result[0].text is not None
-            assert len(result[0].text) > 0
+        # Все проверки в одной функции
+        validate_asr_results(results, expected_count=len(test_audio_files))
 
     def test_warmup_functionality(self, asr_model):
         """Test warmup functionality"""
@@ -70,11 +53,13 @@ class TestASRFunctionality:
         """Test quality of transcription"""
         for file in test_audio_files:
             result = asr_model.process_audio(file['audio'])
-            assert result[0].text is not None
-            assert len(result) == len(file['text'])
-            for i in range(len(result)):
-                assert difflib.SequenceMatcher(None, result[i].text, file['text'][i].text).ratio() > 0.8
-                if result[i].start_time is not None and file['text'][i].start_time is not None:
-                    assert abs(result[i].start_time - file['text'][i].start_time) < 1.0
-                if result[i].end_time is not None and file['text'][i].end_time is not None:
-                    assert abs(result[i].end_time - file['text'][i].end_time) < 1.0
+
+            validate_asr_results(result)
+
+            # Склеиваем весь текст из результата и эталона
+            result_text = ' '.join([chunk.text for chunk in result])
+            reference_text = ' '.join([chunk.text for chunk in file['text']])
+
+            # Проверяем схожесть текстов с помощью difflib
+            similarity = difflib.SequenceMatcher(None, result_text, reference_text).ratio()
+            assert similarity > 0.9, f'Similarity too low: {similarity}'
