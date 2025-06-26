@@ -3,6 +3,7 @@ import logging
 import numpy as np
 import torch
 from pydantic import BaseModel
+from torch.nn.attention import SDPBackend, sdpa_kernel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
 
@@ -35,9 +36,14 @@ class ASRonSPEED:
             torch_dtype=self.config.get_torch_dtype(),
             low_cpu_mem_usage=self.config.model_settings.low_cpu_mem_usage,
             use_safetensors=self.config.model_settings.use_safetensors,
-            attn_implementation=self.config.model_settings.attn_implementation,
         )
         model.to(self.device)
+
+        if self.device == torch.device('cuda'):
+            torch._dynamo.config.recompile_limit = 64
+            model.generation_config.cache_implementation = 'static'
+            model.generation_config.max_new_tokens = self.config.generation_config.max_new_tokens
+            model.forward = torch.compile(model.forward, mode='reduce-overhead', fullgraph=True)
 
         processor = AutoProcessor.from_pretrained(self.config.model_id)
 
@@ -45,9 +51,9 @@ class ASRonSPEED:
             model=model,
             tokenizer=processor.tokenizer,
             feature_extractor=processor.feature_extractor,
-            chunk_length_s=self.seconds_per_chunk,
-            batch_size=self.config.batch_size,
             torch_dtype=self.config.get_torch_dtype(),
+            chunk_length_s=self.config.seconds_per_chunk,
+            stride_length_s=self.config.seconds_per_chunk / 6,
             device=self.device,
         )
 
@@ -55,7 +61,8 @@ class ASRonSPEED:
         steps = num_warmup_steps or self.config.warmup_steps
         audio = np.ones(self.config.sample_rate * self.seconds_per_chunk) / 2.0
         for _ in range(steps):
-            self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
+            with sdpa_kernel(SDPBackend.MATH):
+                self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
         self.is_warmed_up = True
 
     def _process_result(self, result: dict) -> list[ASRChunk]:
@@ -86,7 +93,8 @@ class ASRonSPEED:
         Returns:
             list[ASRChunk] - list of ASR chunks
         """
-        result = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
+        with sdpa_kernel(SDPBackend.MATH):
+            result = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
         return self._process_result(result)  # type: ignore
 
     def process_batch(self, audio: list[np.ndarray]) -> list[list[ASRChunk]]:
@@ -97,7 +105,8 @@ class ASRonSPEED:
         Returns:
             list[list[ASRChunk]] - list of lists of ASR chunks
         """
-        results = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)  # type: ignore
+        with sdpa_kernel(SDPBackend.MATH):
+            results = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)  # type: ignore
         chunks = []
         for result in results:  # type: ignore
             chunks.append(self._process_result(result))  # type: ignore

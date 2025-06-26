@@ -1,62 +1,62 @@
 # Whisper on Speed
 
-Оптимизированная библиотека для быстрого распознавания речи на базе OpenAI Whisper с поддержкой GPU и батчевой обработки.
+Optimized library for fast speech recognition based on OpenAI Whisper with GPU support and batch processing.
 
-## Установка
+## Installation
 
 ```bash
-# Установка зависимостей
+# Install dependencies
 uv sync
 
-# Или для разработки
+# Or for development
 uv sync --dev
 ```
 
-## Использование
+## Usage
 
 ```python
 from src.core.asr import ASRonSPEED
 import librosa
 
-# Инициализация модели
+# Initialize model
 asr = ASRonSPEED(model_id="openai/whisper-large-v3-turbo")
 
-# Опционально: прогрев модели для лучшей производительности
+# Optional: warm up model for better performance
 asr.warmup()
 
-# Загрузка аудио
+# Load audio
 audio, _ = librosa.load("audio.wav", sr=16000)
 
-# Транскрипция одного файла
+# Transcribe single file
 chunks = asr.process_audio(audio)
 for chunk in chunks:
     print(f"{chunk.start_time:.2f}s - {chunk.end_time:.2f}s: {chunk.text}")
 
-# Батчевая обработка
+# Batch processing
 audio_files = [audio1, audio2, audio3]
 batch_results = asr.process_batch(audio_files)
 ```
 
-## Особенности
+## Features
 
-- 🚀 Оптимизированная обработка с использованием GPU
-- 📦 Поддержка батчевой обработки
-- ⏱️ Возвращение временных меток для каждого сегмента
-- 🔥 Функция прогрева для стабильной производительности
-- 📊 Встроенные бенчмарки
+- 🚀 Optimized processing with GPU acceleration
+- 📦 Batch processing support
+- ⏱️ Timestamp return for each segment
+- 🔥 Warmup function for stable performance
+- 📊 Built-in benchmarks
 
-## Тестирование
+## Testing
 
 ```bash
-# Запуск всех тестов
+# Run all tests
 uv run pytest
 
-# Только бенчмарки
+# Benchmarks only
 uv run pytest -m benchmark
 ```
 
-## Требования
+## Requirements
 
 - Python 3.13+
-- CUDA-совместимая GPU (рекомендуется)
-- uv для управления зависимостями
+- CUDA-compatible GPU (recommended)
+- uv for dependency management

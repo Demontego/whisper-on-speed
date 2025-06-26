@@ -24,11 +24,11 @@ class TestASRBenchmark:
     def test_single_transcription_performance(self, asr_model_warmed, test_audio_files, benchmark_results_dir):
         """Benchmark test for single file transcription performance"""
         gpu_info = get_gpu_info()
-        audio_duration = len(test_audio_files[0]) / 16000
+        audio_duration = len(test_audio_files[0]['audio']) / 16000
         num_runs = 5
 
         # Measure performance
-        times = measure_transcription_time(asr_model_warmed, test_audio_files[0], num_runs)
+        times = measure_transcription_time(asr_model_warmed, test_audio_files[0]['audio'], num_runs)
 
         # Calculate statistics
         stats = calculate_performance_stats(times)
@@ -60,11 +60,13 @@ class TestASRBenchmark:
     def test_batch_transcription_performance(self, asr_model_warmed, test_audio_files, benchmark_results_dir):
         """Benchmark test for batch transcription performance"""
         gpu_info = get_gpu_info()
-        total_audio_duration = sum(len(audio) / 16000 for audio in test_audio_files)
+        total_audio_duration = sum(len(file['audio']) / 16000 for file in test_audio_files)
         num_runs = 3
 
         # Measure performance
-        times = measure_batch_transcription_time(asr_model_warmed, test_audio_files, num_runs)
+        times = measure_batch_transcription_time(
+            asr_model_warmed, [file['audio'] for file in test_audio_files], num_runs
+        )
 
         # Calculate statistics
         stats = calculate_performance_stats(times)
@@ -88,7 +90,7 @@ class TestASRBenchmark:
                 'sample_rate': 16000,
                 'total_files': len(test_audio_files),
                 'total_audio_duration': total_audio_duration,
-                'file_durations': [len(audio) / 16000 for audio in test_audio_files],
+                'file_durations': [len(file['audio']) / 16000 for file in test_audio_files],
             },
             'hardware_info': {'gpu': gpu_info},
         }
@@ -110,12 +112,12 @@ class TestASRBenchmark:
     def test_warmup_vs_cold_performance(self, asr_config, test_audio_files, benchmark_results_dir):
         """Benchmark comparison of performance with and without warmup"""
         gpu_info = get_gpu_info()
-        audio_duration = len(test_audio_files[0]) / 16000
+        audio_duration = len(test_audio_files[0]['audio']) / 16000
 
         # Test without warmup
         cold_model = ASRonSPEED(config=asr_config)
         start_time = time.time()
-        cold_result = cold_model.process_audio(test_audio_files[0])
+        cold_result = cold_model.process_audio(test_audio_files[0]['audio'])
         cold_time = time.time() - start_time
 
         # Test with warmup
@@ -123,7 +125,7 @@ class TestASRBenchmark:
         warm_model.warmup(num_warmup_steps=2)
 
         start_time = time.time()
-        warm_result = warm_model.process_audio(test_audio_files[0])
+        warm_result = warm_model.process_audio(test_audio_files[0]['audio'])
         warm_time = time.time() - start_time
 
         # Validate results
@@ -178,14 +180,14 @@ class TestASRBenchmark:
         print(f'Warm processing {"faster" if warm_rtf > 1.0 else "slower"} than real-time')
 
     @pytest.mark.benchmark
-    def test_cpu_vs_cuda_performance(self, cpu_config, cuda_config, test_audio_files, benchmark_results_dir):
+    def test_cpu_vs_cuda_performance(self, cpu_config, asr_config, test_audio_files, benchmark_results_dir):
         """Benchmark comparison of CPU vs CUDA performance"""
         # Skip test if CUDA is not available
         if not torch.cuda.is_available():
             pytest.skip('CUDA not available, skipping CPU vs CUDA comparison')
 
         gpu_info = get_gpu_info()
-        audio_duration = len(test_audio_files[0]) / 16000
+        audio_duration = len(test_audio_files[0]['audio']) / 16000
         num_runs = 3
 
         print('\n=== CPU vs CUDA Performance Comparison ===')
@@ -194,16 +196,16 @@ class TestASRBenchmark:
         # Test with CPU
         print('Testing CPU performance...')
         cpu_model = ASRonSPEED(config=cpu_config)
-        cpu_model.warmup(num_warmup_steps=1)
-        cpu_times = measure_transcription_time(cpu_model, test_audio_files[0], num_runs)
+        cpu_model.warmup(num_warmup_steps=2)
+        cpu_times = measure_transcription_time(cpu_model, test_audio_files[0]['audio'], num_runs)
         cpu_stats = calculate_performance_stats(cpu_times)
         cpu_rtf = audio_duration / cpu_stats['average_time']
 
         # Test with CUDA
         print('Testing CUDA performance...')
-        cuda_model = ASRonSPEED(config=cuda_config)
+        cuda_model = ASRonSPEED(config=asr_config)
         cuda_model.warmup(num_warmup_steps=2)
-        cuda_times = measure_transcription_time(cuda_model, test_audio_files[0], num_runs)
+        cuda_times = measure_transcription_time(cuda_model, test_audio_files[0]['audio'], num_runs)
         cuda_stats = calculate_performance_stats(cuda_times)
         cuda_rtf = audio_duration / cuda_stats['average_time']
 
