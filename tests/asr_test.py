@@ -56,10 +56,8 @@ class TestASRFunctionality:
 
             validate_asr_results(result)
 
-            # Склеиваем весь текст из результата и эталона
             result_text = ' '.join([chunk.text for chunk in result])
             reference_text = ' '.join([chunk.text for chunk in file['text']])
 
-            # Проверяем схожесть текстов с помощью difflib
             similarity = difflib.SequenceMatcher(None, result_text, reference_text).ratio()
             assert similarity > 0.9, f'Similarity too low: {similarity}'
