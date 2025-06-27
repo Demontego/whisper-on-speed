@@ -2,24 +2,21 @@ import logging
 
 import numpy as np
 import torch
-from pydantic import BaseModel
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
 
 from src.core.config import ASRConfig
+from src.core.replica import Replica
 
-
-class ASRChunk(BaseModel):
-    text: str
-    start_time: float | None = None
-    end_time: float | None = None
+torch.set_float32_matmul_precision('high')
 
 
 class ASRonSPEED:
     def __init__(self, config: ASRConfig):
         self.config = config
         self.seconds_per_chunk = config.seconds_per_chunk
+        self.overlap_sec = config.overlap_sec
         self.device = (
             torch.device(config.device) if config.device != 'cpu' and torch.cuda.is_available() else torch.device('cpu')
         )
@@ -53,7 +50,7 @@ class ASRonSPEED:
             feature_extractor=processor.feature_extractor,
             torch_dtype=self.config.get_torch_dtype(),
             chunk_length_s=self.config.seconds_per_chunk,
-            stride_length_s=self.config.seconds_per_chunk / 6,
+            stride_length_s=self.config.overlap_sec,
             device=self.device,
         )
 
@@ -65,7 +62,7 @@ class ASRonSPEED:
                 self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
         self.is_warmed_up = True
 
-    def _process_result(self, result: dict) -> list[ASRChunk]:
+    def _process_result(self, result: dict) -> list[Replica]:
         chunks = []
         for chunk in result['chunks']:  # type: ignore
             text = chunk.get('text', '')
@@ -77,7 +74,7 @@ class ASRonSPEED:
             if start_time is not None and end_time is not None and start_time > end_time:
                 continue
             chunks.append(
-                ASRChunk(
+                Replica(
                     text=text,
                     start_time=start_time,
                     end_time=end_time,
@@ -85,25 +82,25 @@ class ASRonSPEED:
             )
         return chunks
 
-    def process_audio(self, audio: np.ndarray) -> list[ASRChunk]:
+    def process_audio(self, audio: np.ndarray) -> list[Replica]:
         """
         Process one audio file
         Args:
             audio: np.ndarray - audio file
         Returns:
-            list[ASRChunk] - list of ASR chunks
+            list[Replica] - list of ASR chunks
         """
         with sdpa_kernel(SDPBackend.MATH):
             result = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
         return self._process_result(result)  # type: ignore
 
-    def process_batch(self, audio: list[np.ndarray]) -> list[list[ASRChunk]]:
+    def process_batch(self, audio: list[np.ndarray]) -> list[list[Replica]]:
         """
         Process a batch of audio files
         Args:
             audio: list[np.ndarray] - list of audio files
         Returns:
-            list[list[ASRChunk]] - list of lists of ASR chunks
+            list[list[Replica]] - list of lists of ASR chunks
         """
         with sdpa_kernel(SDPBackend.MATH):
             results = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)  # type: ignore

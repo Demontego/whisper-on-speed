@@ -1,5 +1,3 @@
-from typing import Tuple
-
 import torch
 from pydantic import BaseModel, Field
 
@@ -15,14 +13,12 @@ class ModelConfig(BaseModel):
 class GenerationConfig(BaseModel):
     """Configuration for text generation"""
 
-    max_new_tokens: int = Field(default=324, description='maximum number of new tokens')
+    max_new_tokens: int = Field(default=100, description='maximum number of new tokens')
     num_beams: int = Field(default=3, description='number of beams for beam search')
     condition_on_prev_tokens: bool = Field(default=False, description='consider previous tokens')
     compression_ratio_threshold: float = Field(default=1.35, description='compression ratio threshold')
-    temperature: Tuple[float, ...] = Field(
-        default=(0.0, 0.2, 0.4, 0.6, 0.8, 1.0), description='temperatures for generation'
-    )
-    logprob_threshold: float = Field(default=-1.0, description='log probability threshold')
+    temperature: float = Field(default=0.1, description='temperature for generation')
+    logprob_threshold: float = Field(default=0.6, description='log probability threshold')
 
 
 class ASRConfig(BaseModel):
@@ -30,6 +26,7 @@ class ASRConfig(BaseModel):
 
     model_id: str = Field(default='openai/whisper-large-v3-turbo', description='model id')
     seconds_per_chunk: int = Field(default=10, description='seconds per chunk')
+    overlap_sec: float = Field(default=1.0, description='overlap seconds')
     batch_size: int = Field(default=16, description='batch size')
     device: str = Field(default='cuda', description='device')
     warmup_steps: int = Field(default=3, description='number of warmup steps')

@@ -6,20 +6,21 @@ import librosa
 import numpy as np
 import pytest
 
-from src.core.asr import ASRChunk, ASRonSPEED
+from src.core.asr import ASRonSPEED
 from src.core.config import ASRConfig
+from src.core.replica import Replica
 
 
 @pytest.fixture(scope='session')
-def test_audio_files() -> list[dict[str, np.ndarray | list[ASRChunk]]]:
+def test_audio_files() -> list[dict[str, np.ndarray | list[Replica]]]:
     """Fixture with paths to test audio files"""
     test_dir = os.path.join(os.path.dirname(__file__), 'test_data')
 
     with open(os.path.join(test_dir, 'whisper_audio.json'), 'r') as f:
-        whisper_text = [ASRChunk(**item) for item in json.load(f)]
+        whisper_text = [Replica(**item) for item in json.load(f)]
 
     with open(os.path.join(test_dir, 'output.json'), 'r') as f:
-        output_text = [ASRChunk(**item) for item in json.load(f)]
+        output_text = [Replica(**item) for item in json.load(f)]
 
     return [
         {'audio': librosa.load(os.path.join(test_dir, 'output.wav'), sr=16_000)[0], 'text': output_text},
