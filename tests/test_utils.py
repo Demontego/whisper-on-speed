@@ -6,7 +6,8 @@ from typing import Any, Dict, List
 import numpy as np
 import torch
 
-from src.core.asr import ASRChunk, ASRonSPEED
+from src.core.asr import ASRonSPEED
+from src.core.replica import Replica
 
 
 def get_gpu_info() -> Dict[str, Any]:
@@ -88,7 +89,7 @@ def measure_transcription_time(model: ASRonSPEED, audio: np.ndarray, num_runs: i
         # Validate result
         assert isinstance(result, list)
         assert len(result) > 0
-        assert isinstance(result[0], ASRChunk)
+        assert isinstance(result[0], Replica)
         assert result[0].text is not None
         assert len(result[0].text) > 0
 
@@ -114,7 +115,7 @@ def measure_batch_transcription_time(
         for result in results:
             assert isinstance(result, list)
             assert len(result) > 0
-            assert isinstance(result[0], ASRChunk)
+            assert isinstance(result[0], Replica)
             assert result[0].text is not None
             assert len(result[0].text) > 0
 
@@ -188,7 +189,7 @@ def _validate_single_result(result, check_timestamps=True):
     """Проверка одиночного результата ASR"""
     assert isinstance(result, list)
     assert len(result) > 0
-    assert isinstance(result[0], ASRChunk)
+    assert isinstance(result[0], Replica)
     assert result[0].text is not None
     assert len(result[0].text) > 0
 
