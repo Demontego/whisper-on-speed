@@ -1,16 +1,16 @@
 import datetime
 import json
 import time
-from typing import Any, Dict, List
+from pathlib import Path
 
 import numpy as np
 import torch
 
-from src.core.asr import ASRonSPEED
+from src.core.pipe import Pipe
 from src.core.replica import Replica
 
 
-def get_gpu_info() -> Dict[str, Any]:
+def get_gpu_info() -> dict:
     """Get GPU information for benchmarking"""
     gpu_info = {
         'cuda_available': torch.cuda.is_available(),
@@ -47,7 +47,7 @@ def get_gpu_info() -> Dict[str, Any]:
     return gpu_info
 
 
-def calculate_performance_stats(times: List[float]) -> Dict[str, float]:
+def calculate_performance_stats(times: list[float]) -> dict[str, float]:
     """Calculate performance statistics from execution times"""
     avg_time = sum(times) / len(times)
     min_time = min(times)
@@ -57,7 +57,7 @@ def calculate_performance_stats(times: List[float]) -> Dict[str, float]:
     return {'average_time': avg_time, 'minimum_time': min_time, 'maximum_time': max_time, 'std_deviation': std_dev}
 
 
-def calculate_rtf_metrics(audio_duration: float, times: List[float]) -> Dict[str, float]:
+def calculate_rtf_metrics(audio_duration: float, times: list[float]) -> dict[str, float]:
     """Calculate Real-Time Factor metrics"""
     avg_time = sum(times) / len(times)
     min_time = min(times)
@@ -76,13 +76,13 @@ def calculate_rtf_metrics(audio_duration: float, times: List[float]) -> Dict[str
     }
 
 
-def measure_transcription_time(model: ASRonSPEED, audio: np.ndarray, num_runs: int = 1) -> List[float]:
+def measure_transcription_time(model: Pipe, audio: np.ndarray, num_runs: int = 1) -> list[float]:
     """Measure transcription time for multiple runs"""
     times = []
 
     for _ in range(num_runs):
         start_time = time.time()
-        result = model.process_audio(audio)
+        result = model([audio])[0]
         end_time = time.time()
         times.append(end_time - start_time)
 
@@ -96,15 +96,13 @@ def measure_transcription_time(model: ASRonSPEED, audio: np.ndarray, num_runs: i
     return times
 
 
-def measure_batch_transcription_time(
-    model: ASRonSPEED, audio_files: List[np.ndarray], num_runs: int = 1
-) -> List[float]:
+def measure_batch_transcription_time(model: Pipe, audio_files: list[np.ndarray], num_runs: int = 1) -> list[float]:
     """Measure batch transcription time for multiple runs"""
     times = []
 
     for _ in range(num_runs):
         start_time = time.time()
-        results = model.process_batch(audio_files)
+        results = model(audio_files)
         end_time = time.time()
         times.append(end_time - start_time)
 
@@ -122,7 +120,7 @@ def measure_batch_transcription_time(
     return times
 
 
-def save_benchmark_results(benchmark_results_dir, test_name: str, results_data: Dict[str, Any]) -> None:
+def save_benchmark_results(benchmark_results_dir: Path, test_name: str, results_data: dict) -> None:
     """Save benchmark results to JSON file"""
     timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
     filename = f'{test_name}_{timestamp}.json'
@@ -134,7 +132,7 @@ def save_benchmark_results(benchmark_results_dir, test_name: str, results_data: 
     print(f'Benchmark results saved to: {filepath}')
 
 
-def print_gpu_info(gpu_info: Dict[str, Any]) -> None:
+def print_gpu_info(gpu_info: dict) -> None:
     """Print GPU information in a formatted way"""
     print(f'GPU: {gpu_info["device_name"] if gpu_info["cuda_available"] else "CPU only"}')
     if gpu_info['cuda_available'] and gpu_info['memory_info']:
@@ -144,11 +142,11 @@ def print_gpu_info(gpu_info: Dict[str, Any]) -> None:
 
 def print_performance_summary(
     test_name: str,
-    gpu_info: Dict[str, Any],
+    gpu_info: dict,
     audio_duration: float,
     num_runs: int,
-    stats: Dict[str, float],
-    rtf_metrics: Dict[str, float],
+    stats: dict[str, float],
+    rtf_metrics: dict[str, float],
 ) -> None:
     """Print performance summary in a formatted way"""
     print(f'\n=== {test_name} ===')
@@ -164,7 +162,9 @@ def print_performance_summary(
     print(f'Processing {"faster" if rtf_metrics["processing_faster_than_realtime"] else "slower"} than real-time')
 
 
-def validate_asr_results(results, expected_count=None, check_timestamps=True):
+def validate_asr_results(
+    results: list[list[Replica]], expected_count: int | None = None, check_timestamps: bool = True
+) -> None:
     """
     Универсальная функция для проверки результатов ASR
 
@@ -182,10 +182,10 @@ def validate_asr_results(results, expected_count=None, check_timestamps=True):
             _validate_single_result(result, check_timestamps)
     else:
         # Одиночный результат
-        _validate_single_result(results, check_timestamps)
+        _validate_single_result(results[0], check_timestamps)
 
 
-def _validate_single_result(result, check_timestamps=True):
+def _validate_single_result(result: list[Replica], check_timestamps: bool = True) -> None:
     """Проверка одиночного результата ASR"""
     assert isinstance(result, list)
     assert len(result) > 0
