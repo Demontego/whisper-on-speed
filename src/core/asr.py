@@ -37,6 +37,7 @@ class ASRonSPEED:
             torch_dtype=self.dtype,
             low_cpu_mem_usage=self.config.model_settings.low_cpu_mem_usage,
             use_safetensors=self.config.model_settings.use_safetensors,
+            attn_implementation='flash_attention_2',
         ).eval()
         model.to(self.device)
         return model
