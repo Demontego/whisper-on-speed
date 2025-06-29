@@ -6,7 +6,7 @@ class AudioProcessorConfig(BaseModel):
     model_id: str = Field(default='openai/whisper-large-v3-turbo', description='model id')
     model_vad: str = Field(default='snakers4/silero-vad', description='model vad')
     sr: int = Field(default=16_000, description='sample rate')
-    chunk_sec: int = Field(default=10, description='chunk seconds')
+    chunk_sec: int = Field(default=30, description='chunk seconds')
     overlap_sec: float = Field(default=0.3, description='overlap seconds')
 
 
@@ -37,7 +37,7 @@ class ASRConfig(BaseModel):
     """Основная конфигурация для ASR"""
 
     model_id: str = Field(default='openai/whisper-large-v3-turbo', description='model id')
-    batch_size: int = Field(default=32, description='batch size')
+    batch_size: int = Field(default=178, description='batch size')
     warmup_steps: int = Field(default=3, description='number of warmup steps')
     pad_value: int = Field(default=50257, description='pad value')
 

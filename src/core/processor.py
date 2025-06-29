@@ -66,8 +66,8 @@ class AudioProcessor:
             for chunk in chunks['chunks']:
                 segments.append(
                     Replica(
-                        start_time=chunk['timestamp'][0] + second,
-                        end_time=min(chunk['timestamp'][1], self.chunk_sec) + second,
+                        start_time=chunk['timestamp'][0] or 0 + second,
+                        end_time=min(chunk['timestamp'][1] or self.chunk_sec, self.chunk_sec) + second,
                         text=chunk['text'].strip(),
                     )
                 )

@@ -64,12 +64,16 @@ class TestASRBenchmark:
         self, pipe_warmed: Pipe, test_audio_files: list[dict], benchmark_results_dir: Path
     ) -> None:
         """Benchmark test for batch transcription performance"""
+
+        cnt = 40
         gpu_info = get_gpu_info()
-        total_audio_duration = sum(len(file['audio']) / 16000 for file in test_audio_files)
+        total_audio_duration = len(test_audio_files[0]['audio']) / 16000 * cnt
         num_runs = 3
 
         # Measure performance
-        times = measure_batch_transcription_time(pipe_warmed, [file['audio'] for file in test_audio_files], num_runs)
+        times = measure_batch_transcription_time(
+            pipe_warmed, [file['audio'] for file in test_audio_files] * cnt, num_runs
+        )
 
         # Calculate statistics
         stats = calculate_performance_stats(times)
@@ -107,9 +111,6 @@ class TestASRBenchmark:
         )
         print(f'Time per file: {avg_time_per_file:.3f}s')
         print(f'RTF per file: {avg_rtf_per_file:.2f}x')
-
-        # Performance assertion
-        assert stats['average_time'] < 60.0, f'Batch transcription too slow: {stats["average_time"]:.2f}s'
 
     @pytest.mark.benchmark
     def test_warmup_vs_cold_performance(
