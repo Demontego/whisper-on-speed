@@ -51,7 +51,7 @@ class AudioProcessor:
                 chunk = np.pad(chunk, (0, chunk_len - len(chunk)))
             speech_timestamps = self.get_speech_timestamps(chunk, self.vad, return_seconds=True)
             sum_talk_seconds = sum(item['end'] - item['start'] for item in speech_timestamps)
-            if speech_timestamps and sum_talk_seconds > 1.0:
+            if speech_timestamps and sum_talk_seconds > self.config.min_speech_duration:
                 chunks.append(chunk)
                 seconds.append(start / self.sr)
 
@@ -66,8 +66,8 @@ class AudioProcessor:
             for chunk in chunks['chunks']:
                 segments.append(
                     Replica(
-                        start_time=chunk['timestamp'][0] or 0 + second,
-                        end_time=min(chunk['timestamp'][1] or self.chunk_sec, self.chunk_sec) + second,
+                        start_time=(chunk['timestamp'][0] or 0) + second,
+                        end_time=min((chunk['timestamp'][1] or self.chunk_sec), self.chunk_sec) + second,
                         text=chunk['text'].strip(),
                     )
                 )

@@ -8,6 +8,7 @@ class AudioProcessorConfig(BaseModel):
     sr: int = Field(default=16_000, description='sample rate')
     chunk_sec: int = Field(default=30, description='chunk seconds')
     overlap_sec: float = Field(default=0.3, description='overlap seconds')
+    min_speech_duration: float = Field(default=1.0, description='minimum speech duration')
 
 
 class ModelConfig(BaseModel):
