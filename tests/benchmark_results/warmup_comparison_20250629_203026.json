@@ -1,0 +1,43 @@
+{
+  "test_name": "warmup_vs_cold_performance",
+  "timestamp": "2025-06-29T20:30:26.931507",
+  "model_id": "openai/whisper-large-v3-turbo",
+  "results": {
+    "cold_start_time": 6.018312692642212,
+    "warmed_up_time": 5.829629898071289,
+    "speedup": 1.0323661703864508,
+    "warmup_steps": 2
+  },
+  "rtf_metrics": {
+    "cold_rtf": 29.648177007842246,
+    "warm_rtf": 30.60777495652572,
+    "rtf_improvement": 1.0323661703864508,
+    "cold_faster_than_realtime": true,
+    "warm_faster_than_realtime": true
+  },
+  "audio_info": {
+    "sample_rate": 16000,
+    "duration_seconds": 178.432
+  },
+  "hardware_info": {
+    "gpu": {
+      "cuda_available": true,
+      "device_count": 1,
+      "current_device": 0,
+      "device_name": "NVIDIA L4",
+      "device_capability": [
+        8,
+        9
+      ],
+      "memory_info": {
+        "total_memory": 23670685696,
+        "memory_allocated": 3247859712,
+        "memory_reserved": 15047065600,
+        "max_memory_allocated": 12847899136,
+        "max_memory_reserved": 15047065600
+      },
+      "driver_version": "12.6",
+      "torch_version": "2.7.1+cu126"
+    }
+  }
+}

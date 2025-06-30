@@ -1,0 +1,68 @@
+{
+  "test_name": "cpu_vs_cuda_performance",
+  "timestamp": "2025-06-28T16:38:17.462695",
+  "model_id": "openai/whisper-large-v3-turbo",
+  "num_runs": 3,
+  "audio_info": {
+    "sample_rate": 16000,
+    "duration_seconds": 178.432
+  },
+  "cpu_results": {
+    "execution_times": [
+      767.9647653102875,
+      763.2826118469238,
+      762.5898950099945
+    ],
+    "statistics": {
+      "average_time": 764.6124240557352,
+      "minimum_time": 762.5898950099945,
+      "maximum_time": 767.9647653102875,
+      "std_deviation": 2.3872729308105,
+      "rtf": 0.23336267419451906
+    },
+    "device": "cpu",
+    "faster_than_realtime": false
+  },
+  "cuda_results": {
+    "execution_times": [
+      5.98137903213501,
+      5.873929262161255,
+      5.8592729568481445
+    ],
+    "statistics": {
+      "average_time": 5.904860417048137,
+      "minimum_time": 5.8592729568481445,
+      "maximum_time": 5.98137903213501,
+      "std_deviation": 0.05443666449779101,
+      "rtf": 30.217818440693787
+    },
+    "device": "cuda",
+    "faster_than_realtime": true
+  },
+  "comparison": {
+    "cuda_speedup": 129.4886534232367,
+    "rtf_improvement": 129.4886534232367,
+    "winner": "cuda"
+  },
+  "hardware_info": {
+    "gpu": {
+      "cuda_available": true,
+      "device_count": 1,
+      "current_device": 0,
+      "device_name": "NVIDIA GeForce RTX 3090",
+      "device_capability": [
+        8,
+        6
+      ],
+      "memory_info": {
+        "total_memory": 25769279488,
+        "memory_allocated": 3245107200,
+        "memory_reserved": 16894656512,
+        "max_memory_allocated": 16360756736,
+        "max_memory_reserved": 16894656512
+      },
+      "driver_version": "12.6",
+      "torch_version": "2.7.1+cu126"
+    }
+  }
+}

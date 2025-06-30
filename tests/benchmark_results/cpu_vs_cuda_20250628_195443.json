@@ -1,0 +1,68 @@
+{
+  "test_name": "cpu_vs_cuda_performance",
+  "timestamp": "2025-06-28T19:54:43.525490",
+  "model_id": "openai/whisper-large-v3-turbo",
+  "num_runs": 3,
+  "audio_info": {
+    "sample_rate": 16000,
+    "duration_seconds": 178.432
+  },
+  "cpu_results": {
+    "execution_times": [
+      1439.8684120178223,
+      1442.743326663971,
+      1442.6916289329529
+    ],
+    "statistics": {
+      "average_time": 1441.7677892049153,
+      "minimum_time": 1439.8684120178223,
+      "maximum_time": 1442.743326663971,
+      "std_deviation": 1.343228309703994,
+      "rtf": 0.1237591804560976
+    },
+    "device": "cpu",
+    "faster_than_realtime": false
+  },
+  "cuda_results": {
+    "execution_times": [
+      14.99962568283081,
+      15.154445171356201,
+      15.081483125686646
+    ],
+    "statistics": {
+      "average_time": 15.07851799329122,
+      "minimum_time": 14.99962568283081,
+      "maximum_time": 15.154445171356201,
+      "std_deviation": 0.06323955784374047,
+      "rtf": 11.833523697712765
+    },
+    "device": "cuda",
+    "faster_than_realtime": true
+  },
+  "comparison": {
+    "cuda_speedup": 95.61734050033239,
+    "rtf_improvement": 95.61734050033239,
+    "winner": "cuda"
+  },
+  "hardware_info": {
+    "gpu": {
+      "cuda_available": true,
+      "device_count": 1,
+      "current_device": 0,
+      "device_name": "NVIDIA L4",
+      "device_capability": [
+        8,
+        9
+      ],
+      "memory_info": {
+        "total_memory": 23670685696,
+        "memory_allocated": 3245762560,
+        "memory_reserved": 18547212288,
+        "max_memory_allocated": 11531766784,
+        "max_memory_reserved": 18547212288
+      },
+      "driver_version": "12.6",
+      "torch_version": "2.7.1+cu126"
+    }
+  }
+}

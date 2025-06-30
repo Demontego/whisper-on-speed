@@ -2,109 +2,98 @@ import logging
 
 import numpy as np
 import torch
+from torch.nn import functional as F  # noqa: N812
 from torch.nn.attention import SDPBackend, sdpa_kernel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
-from transformers.pipelines.automatic_speech_recognition import AutomaticSpeechRecognitionPipeline
 
 from src.core.config import ASRConfig
-from src.core.replica import Replica
 
-torch.set_float32_matmul_precision('high')
+torch.set_float32_matmul_precision('medium')
 
 
 class ASRonSPEED:
-    def __init__(self, config: ASRConfig):
+    def __init__(self, config: ASRConfig) -> None:
+        """
+        Initialize the model
+
+        Args:
+            config: Model configuration
+        """
         self.config = config
-        self.seconds_per_chunk = config.seconds_per_chunk
-        self.overlap_sec = config.overlap_sec
-        self.device = (
-            torch.device(config.device) if config.device != 'cpu' and torch.cuda.is_available() else torch.device('cpu')
-        )
+        self.processor = AutoProcessor.from_pretrained(config.model_id)
+        self.dtype = config.get_torch_dtype()
+        self.device = torch.device(config.model_settings.device)
         self.is_warmed_up = False
         self.logger = logging.getLogger(__name__)
 
-        self.generate_kwargs = config.generation_config.model_dump()
-        self.pipe = self._initialize_model()
+        self.generate_kwargs = config.generation_config
+        self.batch_size = config.batch_size
+        self.model = self._initialize_model()
 
-    def _initialize_model(self) -> AutomaticSpeechRecognitionPipeline:
+    def _initialize_model(self) -> AutoModelForSpeechSeq2Seq:
         """Initialize the model and pipeline"""
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             pretrained_model_name_or_path=self.config.model_id,
-            torch_dtype=self.config.get_torch_dtype(),
+            torch_dtype=self.dtype,
             low_cpu_mem_usage=self.config.model_settings.low_cpu_mem_usage,
             use_safetensors=self.config.model_settings.use_safetensors,
-        )
+            attn_implementation='flash_attention_2',
+        ).eval()
         model.to(self.device)
+        return model
 
-        if self.device == torch.device('cuda'):
-            torch._dynamo.config.recompile_limit = 64
-            model.generation_config.cache_implementation = 'static'
-            model.generation_config.max_new_tokens = self.config.generation_config.max_new_tokens
-            model.forward = torch.compile(model.forward, mode='reduce-overhead', fullgraph=True)
-
-        processor = AutoProcessor.from_pretrained(self.config.model_id)
-
-        return AutomaticSpeechRecognitionPipeline(
-            model=model,
-            tokenizer=processor.tokenizer,
-            feature_extractor=processor.feature_extractor,
-            torch_dtype=self.config.get_torch_dtype(),
-            chunk_length_s=self.config.seconds_per_chunk,
-            stride_length_s=self.config.overlap_sec,
-            device=self.device,
-        )
-
-    def warmup(self, num_warmup_steps: int | None = None) -> None:
+    def warmup(self, num_warmup_steps: int | None = None, sr: int = 16000) -> None:
         steps = num_warmup_steps or self.config.warmup_steps
-        audio = np.ones(self.config.sample_rate * self.seconds_per_chunk) / 2.0
+        dummy_audio = np.ones((4, sr * 10)) * 0.5
+        dummy_tensor = self.processor.feature_extractor(
+            dummy_audio, sampling_rate=sr, return_tensors='pt'
+        ).input_features
+        dummy_tensor = dummy_tensor.to(self.device, dtype=self.dtype)
         for _ in range(steps):
             with sdpa_kernel(SDPBackend.MATH):
-                self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
+                self.model.generate(dummy_tensor, **self.generate_kwargs.model_dump())  # type: ignore
         self.is_warmed_up = True
 
-    def _process_result(self, result: dict) -> list[Replica]:
-        chunks = []
-        for chunk in result['chunks']:  # type: ignore
-            text = chunk.get('text', '')
-            if len(text) == 0:
-                continue
-            start_time, end_time = chunk.get('timestamp', (None, None))
-            if start_time is None and end_time is None:
-                continue
-            if start_time is not None and end_time is not None and start_time > end_time:
-                continue
-            chunks.append(
-                Replica(
-                    text=text,
-                    start_time=start_time,
-                    end_time=end_time,
+    def __call__(self, audio: np.ndarray, sr: int = 16000) -> np.ndarray:
+        """
+        Обрабатывает аудио по батчам согласно batch_size из конфига
+
+        Args:
+            audio: Входной тензор формы (N, ...)
+
+        Returns:
+            list[list[int]]: Результат генерации токенов
+        """
+        # Получаем общее количество элементов в первой размерности
+        input_features = self.processor.feature_extractor(audio, sampling_rate=sr, return_tensors='pt').input_features
+        total_samples = input_features.shape[0]
+
+        # Если входной батч меньше или равен размеру батча, обрабатываем целиком
+        if total_samples <= self.batch_size:
+            with sdpa_kernel(SDPBackend.MATH), torch.no_grad():
+                batch = input_features.to(self.device, dtype=self.dtype)
+                result = self.model.generate(batch, **self.generate_kwargs.model_dump()).cpu().numpy()  # type: ignore
+            return result
+
+        # Разбиваем на батчи и обрабатываем по частям
+        results = []
+
+        for i in range(0, total_samples, self.batch_size):
+            # Извлекаем батч
+            end_idx = min(i + self.batch_size, total_samples)
+            batch = input_features[i:end_idx]
+
+            # Обрабатываем батч
+            with sdpa_kernel(SDPBackend.MATH), torch.no_grad():
+                batch = batch.to(self.device, dtype=self.dtype)
+                batch_result = self.model.generate(batch, **self.generate_kwargs.model_dump()).cpu()  # type: ignore
+                batch_result = F.pad(
+                    batch_result,
+                    (0, self.generate_kwargs.max_new_tokens - batch_result.shape[1], 0, 0),
+                    value=self.config.pad_value,
                 )
-            )
-        return chunks
 
-    def process_audio(self, audio: np.ndarray) -> list[Replica]:
-        """
-        Process one audio file
-        Args:
-            audio: np.ndarray - audio file
-        Returns:
-            list[Replica] - list of ASR chunks
-        """
-        with sdpa_kernel(SDPBackend.MATH):
-            result = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)
-        return self._process_result(result)  # type: ignore
+            results.append(batch_result)
 
-    def process_batch(self, audio: list[np.ndarray]) -> list[list[Replica]]:
-        """
-        Process a batch of audio files
-        Args:
-            audio: list[np.ndarray] - list of audio files
-        Returns:
-            list[list[Replica]] - list of lists of ASR chunks
-        """
-        with sdpa_kernel(SDPBackend.MATH):
-            results = self.pipe(audio, generate_kwargs=self.generate_kwargs, return_timestamps=True)  # type: ignore
-        chunks = []
-        for result in results:  # type: ignore
-            chunks.append(self._process_result(result))  # type: ignore
-        return chunks
+        # Объединяем результаты
+        return np.concatenate(results, axis=0)

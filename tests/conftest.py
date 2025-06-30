@@ -6,8 +6,8 @@ import librosa
 import numpy as np
 import pytest
 
-from src.core.asr import ASRonSPEED
-from src.core.config import ASRConfig
+from src.core.config import ASRConfig, AudioProcessorConfig, ModelConfig
+from src.core.pipe import Pipe
 from src.core.replica import Replica
 
 
@@ -35,18 +35,23 @@ def asr_config() -> ASRConfig:
 
 
 @pytest.fixture(scope='session')
-def asr_model(asr_config) -> ASRonSPEED:
-    """Fixture for creating ASR model - initialized once per session"""
-    return ASRonSPEED(config=asr_config)
+def processor_config() -> AudioProcessorConfig:
+    """Fixture for creating processor config"""
+    return AudioProcessorConfig()
 
 
 @pytest.fixture(scope='session')
-def asr_model_warmed() -> ASRonSPEED:
+def pipe(asr_config: ASRConfig, processor_config: AudioProcessorConfig) -> Pipe:
+    """Fixture for creating ASR model - initialized once per session"""
+    return Pipe(config_asr=asr_config, config_processor=processor_config)
+
+
+@pytest.fixture(scope='session')
+def pipe_warmed(asr_config: ASRConfig, processor_config: AudioProcessorConfig) -> Pipe:
     """Fixture for creating warmed up ASR model - initialized once per session"""
-    config = ASRConfig(model_id='openai/whisper-large-v3-turbo')
-    model = ASRonSPEED(config=config)
-    model.warmup(num_warmup_steps=2)
-    return model
+    pipe = Pipe(config_asr=asr_config, config_processor=processor_config)
+    pipe.warmup()
+    return pipe
 
 
 @pytest.fixture(scope='session')
@@ -60,4 +65,12 @@ def benchmark_results_dir() -> Path:
 @pytest.fixture(scope='session')
 def cpu_config() -> ASRConfig:
     """Fixture for CPU configuration"""
-    return ASRConfig(model_id='openai/whisper-large-v3-turbo', device='cpu')
+    return ASRConfig(
+        model_id='openai/whisper-large-v3-turbo', model_settings=ModelConfig(torch_dtype='float32', device='cpu')
+    )
+
+
+@pytest.fixture(scope='session')
+def cpu_pipe(cpu_config: ASRConfig, processor_config: AudioProcessorConfig) -> Pipe:
+    """Fixture for creating CPU ASR model - initialized once per session"""
+    return Pipe(config_asr=cpu_config, config_processor=processor_config)
