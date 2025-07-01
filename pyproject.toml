@@ -15,6 +15,7 @@ dependencies = [
     "torchaudio>=2.7.1",
     "onnxruntime>=1.22.0",
     "flash-attn>=2.8.0.post2",
+    "pytest-cov>=6.2.1",
 ]
 
 [build-system]
@@ -35,6 +36,7 @@ dev-dependencies = [
     "datasets>=3.6.0",
     "soundfile>=0.13.1",
     "poethepoet>=0.35.0",
+    "scalene>=1.5.51",
 ]
 
 [tool.pytest.ini_options]

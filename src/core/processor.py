@@ -24,6 +24,7 @@ class AudioProcessor:
         self.sr = config.sr
         self.chunk_sec = config.chunk_sec
         self.overlap_sec = config.overlap_sec
+        self.min_speech_duration = config.min_speech_duration
         self.logger = logging.getLogger(__name__)
 
     def preprocess(self, audio: np.ndarray) -> tuple[np.ndarray, list[float]]:
@@ -51,7 +52,7 @@ class AudioProcessor:
                 chunk = np.pad(chunk, (0, chunk_len - len(chunk)))
             speech_timestamps = self.get_speech_timestamps(chunk, self.vad, return_seconds=True)
             sum_talk_seconds = sum(item['end'] - item['start'] for item in speech_timestamps)
-            if speech_timestamps and sum_talk_seconds > self.config.min_speech_duration:
+            if speech_timestamps and sum_talk_seconds > self.min_speech_duration:
                 chunks.append(chunk)
                 seconds.append(start / self.sr)
 
