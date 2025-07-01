@@ -65,7 +65,7 @@ class TestASRBenchmark:
     ) -> None:
         """Benchmark test for batch transcription performance"""
 
-        cnt = 40
+        cnt = 20
         gpu_info = get_gpu_info()
         total_audio_duration = len(test_audio_files[0]['audio']) / 16000 * cnt
         num_runs = 3
@@ -278,3 +278,13 @@ class TestASRBenchmark:
         # Warning if CPU is significantly faster than CUDA
         if speedup < 0.5:
             print(f'WARNING: CPU appears significantly faster than CUDA (speedup: {speedup:.2f}x)')
+
+
+if __name__ == '__main__':
+    # Запуск определенного теста
+    # Примеры:
+    pytest.main(['tests/asr_benchmark_test.py::TestASRBenchmark::test_batch_transcription_performance'])
+    # pytest.main(['tests/asr_benchmark_test.py::TestASRBenchmark::test_single_transcription_performance'])
+    # pytest.main(['tests/asr_benchmark_test.py::TestASRBenchmark::test_warmup_vs_cold_performance'])
+    # Или запуск всех тестов в файле:
+    # pytest.main(['tests/asr_benchmark_test.py'])
