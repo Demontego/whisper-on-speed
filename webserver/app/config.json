@@ -1,0 +1,11 @@
+{
+    "allowed_bucket": "my-audio-bucket",
+    "redis_host": "redis",
+    "redis_port": 6379,
+    "gcp_settings": {
+      "project_id": "your-project-id",
+      "zone": "us-central1-a",
+      "instance_name": "worker-instance"
+    },
+    "shutdown_enabled": false
+  }

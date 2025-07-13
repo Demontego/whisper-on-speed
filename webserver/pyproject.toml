@@ -1,0 +1,27 @@
+[project]
+name = "webservice"
+version = "0.1.0"
+description = "Audio processing service with FastAPI and Celery"
+authors = [
+    {name = "Your Name", email = "your.email@example.com"}
+]
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.95.0",
+    "uvicorn>=0.21.0",
+    "celery>=5.2.0",
+    "redis>=4.5.0",
+    "pydantic>=1.10.0",
+    "google-cloud-compute>=1.10.1",
+    "python-dotenv>=0.21.0",
+    "google-cloud-storage>=2.0.0"  # Если нужна работа с GCS
+]
+
+[build-system]
+requires = ["setuptools>=42.0.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.celery]
+app = "app.celery_app:celery"
+broker_url = "redis://redis:6379/0"
+result_backend = "redis://redis:6379/1"
