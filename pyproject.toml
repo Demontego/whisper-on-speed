@@ -3,7 +3,7 @@ name = "whisper"
 version = "0.1.2"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "accelerate>=1.7.0",
     "torch>=2.7.1",
@@ -15,6 +15,12 @@ dependencies = [
     "torchaudio>=2.7.1",
     "onnxruntime>=1.22.0",
     "flash-attn>=2.8.0.post2",
+    "fastapi>=0.116.1",
+    "uvicorn>=0.35.0",
+    "python-multipart>=0.0.20",
+    "aqueduct>=1.11.7",
+    "cffi==1.16.0",
+    "cachetools>=6.1.0",
 ]
 
 [build-system]
@@ -124,7 +130,7 @@ test = "uv run pytest tests/ -v --cov=src --cov-report=xml"
 [tool.pyright]
 venvPath = "."
 venv = ".venv"
-pythonVersion = "3.13"
+pythonVersion = "3.12"
 typeCheckingMode = "basic"
 reportMissingImports = true
 exclude = [

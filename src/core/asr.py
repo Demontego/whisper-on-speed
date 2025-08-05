@@ -32,15 +32,18 @@ class ASRonSPEED:
 
     def _initialize_model(self) -> AutoModelForSpeechSeq2Seq:
         """Initialize the model and pipeline"""
+        
+        attn_impl = 'flash_attention_2' if self.device.type == 'cuda' else 'eager'
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             pretrained_model_name_or_path=self.config.model_id,
             torch_dtype=self.dtype,
             low_cpu_mem_usage=self.config.model_settings.low_cpu_mem_usage,
             use_safetensors=self.config.model_settings.use_safetensors,
-            attn_implementation='flash_attention_2',
+            attn_implementation=attn_impl,
         ).eval()
         model.to(self.device)
         return model
+
 
     def warmup(self, num_warmup_steps: int | None = None, sr: int = 16000) -> None:
         steps = num_warmup_steps or self.config.warmup_steps

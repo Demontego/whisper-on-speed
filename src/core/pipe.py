@@ -1,3 +1,5 @@
+# TODO удалить после исправления тестов (функционал реализован в flow)
+
 import logging
 
 import numpy as np
