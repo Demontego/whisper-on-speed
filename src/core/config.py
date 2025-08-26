@@ -1,4 +1,5 @@
 import torch
+from typing import List
 from pydantic import BaseModel, Field
 
 
@@ -9,6 +10,17 @@ class AudioProcessorConfig(BaseModel):
     chunk_sec: int = Field(default=30, description='chunk seconds')
     overlap_sec: float = Field(default=0.3, description='overlap seconds')
     min_speech_duration: float = Field(default=1.0, description='minimum speech duration')
+
+
+class S3Config(BaseModel):
+    """Configuration for S3/Google Cloud Storage"""
+    
+    input_bucket_name: str = Field(default="whisper-on-speed-test", description="GCS bucket name for audio files")
+    output_bucket_name: str = Field(default="whisper-audio-test-tel-na", description="GCS bucket name for audio files")
+    supported_extensions: List[str] = Field(
+        default=[".wav", ".flac", ".mp3", ".m4a"], 
+        description="Supported audio file extensions"
+    )
 
 
 class ModelConfig(BaseModel):

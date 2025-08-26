@@ -68,7 +68,7 @@ class AudioPostProcessorHandler(BaseTaskHandler):
 def get_audio_flow(asr: "ASRonSPEED", processor: AudioProcessor) -> Flow:
     return Flow(
         FlowStep(AudioPreProcessorHandler(processor)),
-        FlowStep(ASRHandler(asr, processor.sr), batch_size=20),  # TODO размер батча в конфиг
+        FlowStep(ASRHandler(asr, processor.sr), batch_timeout=10.0, batch_size=20),  # TODO config
         FlowStep(AudioPostProcessorHandler(processor)),
         metrics_enabled=False,
     )

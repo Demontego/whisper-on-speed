@@ -20,7 +20,7 @@ dependencies = [
     "python-multipart>=0.0.20",
     "aqueduct>=1.11.7",
     "cffi==1.16.0",
-    "cachetools>=6.1.0",
+    "google-cloud-storage>=3.3.0",
 ]
 
 [build-system]
@@ -46,6 +46,9 @@ dev-dependencies = [
     "sentence-transformers>=5.0.0",
     "jiwer>=4.0.0",
     "pytest-cov>=6.2.1",
+]
+override-dependencies = [
+    "flash-attn; sys_platform == 'never'"
 ]
 
 [tool.pytest.ini_options]

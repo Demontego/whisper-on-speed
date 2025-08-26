@@ -1,22 +1,28 @@
-import io
+import asyncio
+import json
+import os
 import time
 import uuid
-import asyncio
 import logging
 from contextlib import asynccontextmanager
-import os
 
-
-import uvicorn
-import soundfile as sf
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.datastructures import State
 import torch
-from cachetools import TTLCache
-from fastapi import FastAPI, UploadFile, HTTPException, Request
+from pathlib import Path
 
-from src.core.config import ASRConfig, AudioProcessorConfig
+from src.core.config import ASRConfig, AudioProcessorConfig, S3Config
 from src.core.processor import AudioProcessor
 from src.core.asr import ASRonSPEED
 from src.core.flow import get_audio_flow, AudioTask
+from src.core.s3_processor import S3Processor
+from typing import TYPE_CHECKING, AsyncIterator, cast
+
+if TYPE_CHECKING:
+    from src.core.asr import ASRonSPEED
+    from src.core.processor import AudioProcessor
+    from aqueduct import Flow
+    import numpy as np
 
 
 logging.basicConfig(level=logging.INFO)
@@ -24,102 +30,122 @@ logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    asr_config = ASRConfig()
-    audio_proc_config = AudioProcessorConfig()
+async def lifespan(app: FastAPI) -> AsyncIterator[dict]:
+    audio_processor = AudioProcessor(AudioProcessorConfig())
 
+    asr_config = ASRConfig()
     if not torch.cuda.is_available():
         asr_config.model_settings.device = "cpu"
         asr_config.model_settings.torch_dtype = "float32"
-
-    processor = AudioProcessor(audio_proc_config)
+    
     asr = ASRonSPEED(asr_config)
     if os.getenv("SKIP_WARMUP") != "1":   # TODO для отладки
         logger.info("Warmup started...")
         start = time.time()
-        asr.warmup(1, processor.sr)
+        asr.warmup(1, audio_processor.sr)
         logger.info(f"Warmup completed in {time.time() - start:.2f} seconds")
     else:
         logger.info("Warmup skipped")
 
-    flow = get_audio_flow(asr, processor)
+    flow = get_audio_flow(asr, audio_processor)
     flow.start()
 
-    app.state.asr = asr
-    app.state.processor = processor
-    app.state.flow = flow
+    s3_processor = S3Processor(S3Config())
 
-    app.state.tasks = TTLCache(maxsize=1000, ttl=3600)  # TODO queue + broker
-    yield
+    yield {
+        "audio_processor": audio_processor,
+        "asr": asr,
+        "flow": flow,
+        "s3_processor": s3_processor,
+    }
+
+
+async def audio_processor(request: Request) -> AudioProcessor:
+    return request.state.audio_processor
+
+
+async def asr_model(request: Request) -> ASRonSPEED:
+    return request.state.asr
+
+
+async def aqueduct_flow(request: Request) -> "Flow":
+    return request.state.flow
+
+
+async def s3_processor(request: Request) -> S3Processor:
+    return request.state.s3_processor
+
+
+async def download_audio_file(s3_processor: S3Processor, file_path: str):
+    try:
+        audio_np, sr = s3_processor.download_audio(file_path)
+        return audio_np, sr
+    except Exception as e:
+        logger.error(f"Failed to download {file_path}: {e}")
+        raise
+
+async def transcribe_audio(flow: "Flow", audio_np: "np.ndarray"):
+    task = AudioTask(audio_np)
+    await flow.process(task, timeout_sec=300)  # TODO config
+    return [
+        {"start_time": seg.start_time, "end_time": seg.end_time, "text": seg.text}
+        for seg in task.replicas or []
+    ]
+
+async def upload_transcription(s3_processor: S3Processor, segments: list[dict], file_path: str, s3_prefix: str) -> None:
+    try:
+        output_file = f"{s3_prefix}/{Path(file_path).stem}.json"
+        s3_processor.upload_result_json(output_file, json.dumps({"segments": segments}, indent=2))
+        logger.info(f"Saved result for {file_path} to {output_file}")
+    except Exception as e:
+        logger.error(f"Failed to upload {file_path}: {e}")
+
+async def process_audio_file(flow, audio_processor: "AudioProcessor", s3_processor, file_path: str, s3_prefix: str):
+    audio_np, sr = await download_audio_file(s3_processor, file_path)
+
+    if sr != audio_processor.sr:
+        logger.warning(f"Skipping {file_path}: sample rate mismatch {sr}")
+        return
+
+    segments = await transcribe_audio(flow, audio_np)
+    await upload_transcription(s3_processor, segments, file_path, s3_prefix)
+
+
+async def transcribe_audio_files(flow, audio_processor, s3_processor, audio_files: list[str], transcribe_id: str) -> None:
+    s3_prefix = f"results/{transcribe_id}"
+    tasks = [
+        process_audio_file(flow, audio_processor, s3_processor, file_path, s3_prefix)
+        for file_path in audio_files
+    ]
+    await asyncio.gather(*tasks, return_exceptions=True)
 
 
 app = FastAPI(lifespan=lifespan)
 
 
-@app.post("/transcribe")
-async def transcribe(
-    request: Request,  # TODO s3 bucket with audiofiles
-    file: UploadFile
-):
-    processor: AudioProcessor = request.app.state.processor
-    flow = request.app.state.flow
+@app.post("/transcribe-s3")
+async def transcribe_from_s3(path: str, flow: "Flow" = Depends(aqueduct_flow), ap: AudioProcessor = Depends(audio_processor), s3: S3Processor = Depends(s3_processor)):
 
-    if file.content_type not in ("audio/wav", "audio/x-wav", "audio/flac"):
-        raise HTTPException(status_code=400, detail="Unsupported audio format")
+    audio_files = s3.list_input_audio_files(path)
+    if not audio_files:
+        raise HTTPException(status_code=404, detail="No audio files found")
 
-    audio_bytes = await file.read()
-    try:
-        audio_np, sr = sf.read(io.BytesIO(audio_bytes), dtype='float32')
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Error reading audio: {e}")
+    transcribe_id = str(uuid.uuid4())
+    asyncio.create_task(transcribe_audio_files(flow, ap, s3, audio_files, transcribe_id))
 
-    if sr != processor.sr:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Expected sample rate {processor.sr}, got {sr}"
-        )
-
-    task_id = str(uuid.uuid4())
-
-    task = AudioTask(audio_np)  # TODO for file in request.bucket tasks.append(AudioTask(file))
+    return {"task_id": transcribe_id, "files_count": len(audio_files)}
 
 
-    app.state.tasks[task_id] = {
-        "status": "pending",
-        "result": None,
-        "error": None,
-    }
+@app.get("/results/{task_id}")
+async def get_results(task_id: str, s3: S3Processor = Depends(s3_processor)):
 
-    async def run_task():
-        try:
-            await flow.process(task, timeout_sec=10.)  # TODO timeout в конфиг
-            segments = [
-                {"start_time": seg.start_time, "end_time": seg.end_time, "text": seg.text}
-                for seg in task.replicas or []
-            ]
-            app.state.tasks[task_id]["status"] = "completed"
-            app.state.tasks[task_id]["result"] = {"segments": segments}
-        except Exception as e:
-            app.state.tasks[task_id]["status"] = "failed"
-            app.state.tasks[task_id]["error"] = str(e)
-    
-    asyncio.create_task(run_task())
+    result_files = s3.list_results_jsons(f"results/{task_id}")
+    if not result_files:
+        raise HTTPException(status_code=404, detail="No results found")
 
-    return {"task_id": task_id}
-
-
-@app.get("/status/{task_id}")
-async def get_status(task_id: str):
-    task = app.state.tasks.get(task_id)
-    if not task:
-        raise HTTPException(404, detail="Task ID not found")
-
-    return {
-        "status": task["status"],
-        "result": task["result"],
-        "error": task["error"],
-    }
+    return {"task_id": task_id, "result_files": result_files, "s3_bucket": s3.output_bucket.name}
 
 
 if __name__ == "__main__":
+    import uvicorn
     uvicorn.run("main:app", host="0.0.0.0", port=8000)
