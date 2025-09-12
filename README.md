@@ -57,6 +57,6 @@ uv run pytest -m benchmark
 
 ## Requirements
 
-- Python 3.13+
+- Python 3.12+
 - CUDA-compatible GPU (recommended)
 - uv for dependency management

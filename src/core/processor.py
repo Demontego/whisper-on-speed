@@ -58,8 +58,12 @@ class AudioProcessor:
 
         return np.stack(chunks), seconds
 
-    def postprocess(self, tokens: np.ndarray, seconds: list[float]) -> list[Replica]:
+    def postprocess(self, tokens: np.ndarray | None, seconds: list[float] | None) -> list[Replica]:
         segments = []
+        if tokens is None:
+            return []
+        if seconds is None:
+            return []
         for token, second in zip(tokens, seconds):
             _, chunks = self.processor.tokenizer._decode_asr(
                 [{'tokens': [token]}], return_language=False, return_timestamps=True, time_precision=0.02

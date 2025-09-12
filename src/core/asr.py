@@ -32,6 +32,7 @@ class ASRonSPEED:
 
     def _initialize_model(self) -> AutoModelForSpeechSeq2Seq:
         """Initialize the model and pipeline"""
+
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
             pretrained_model_name_or_path=self.config.model_id,
             torch_dtype=self.dtype,
