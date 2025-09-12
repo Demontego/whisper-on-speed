@@ -1,12 +1,11 @@
-from aqueduct import Flow, FlowStep, BaseTaskHandler, BaseTask
-
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import numpy as np
+from aqueduct import BaseTask, BaseTaskHandler, Flow, FlowStep
 
-from src.core.replica import Replica
+from src.core.config import AqueductConfig
 from src.core.processor import AudioProcessor
-
+from src.core.replica import Replica
 
 if TYPE_CHECKING:
     from src.core.asr import ASRonSPEED
@@ -34,7 +33,7 @@ class AudioPreProcessorHandler(BaseTaskHandler):
 
 
 class ASRHandler(BaseTaskHandler):
-    def __init__(self, asr: "ASRonSPEED", sr: int):
+    def __init__(self, asr: 'ASRonSPEED', sr: int):
         self.asr = asr
         self.sr = sr
 
@@ -65,10 +64,11 @@ class AudioPostProcessorHandler(BaseTaskHandler):
             task.replicas = replicas
 
 
-def get_audio_flow(asr: "ASRonSPEED", processor: AudioProcessor) -> Flow:
+def get_audio_flow(asr: 'ASRonSPEED', processor: AudioProcessor) -> Flow:
+    aq_config = AqueductConfig()
     return Flow(
         FlowStep(AudioPreProcessorHandler(processor)),
-        FlowStep(ASRHandler(asr, processor.sr), batch_timeout=10.0, batch_size=20),  # TODO config
+        FlowStep(ASRHandler(asr, processor.sr), batch_timeout=10.0, batch_size=aq_config.batch_size),
         FlowStep(AudioPostProcessorHandler(processor)),
         metrics_enabled=False,
     )

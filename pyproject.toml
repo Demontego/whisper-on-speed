@@ -17,7 +17,6 @@ dependencies = [
     "flash-attn>=2.8.0.post2",
     "fastapi>=0.116.1",
     "uvicorn>=0.35.0",
-    "python-multipart>=0.0.20",
     "aqueduct>=1.11.7",
     "cffi==1.16.0",
     "google-cloud-storage>=3.3.0",
@@ -46,9 +45,6 @@ dev-dependencies = [
     "sentence-transformers>=5.0.0",
     "jiwer>=4.0.0",
     "pytest-cov>=6.2.1",
-]
-override-dependencies = [
-    "flash-attn; sys_platform == 'never'"
 ]
 
 [tool.pytest.ini_options]

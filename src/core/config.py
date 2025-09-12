@@ -1,5 +1,6 @@
-import torch
 from typing import List
+
+import torch
 from pydantic import BaseModel, Field
 
 
@@ -14,13 +15,19 @@ class AudioProcessorConfig(BaseModel):
 
 class S3Config(BaseModel):
     """Configuration for S3/Google Cloud Storage"""
-    
-    input_bucket_name: str = Field(default="whisper-on-speed-test", description="GCS bucket name for audio files")
-    output_bucket_name: str = Field(default="whisper-audio-test-tel-na", description="GCS bucket name for audio files")
+
+    input_bucket_name: str = Field(default='whisper-on-speed-test', description='GCS bucket name for audio files')
+    output_bucket_name: str = Field(default='whisper-audio-test-tel-na', description='GCS bucket name for audio files')
     supported_extensions: List[str] = Field(
-        default=[".wav", ".flac", ".mp3", ".m4a"], 
-        description="Supported audio file extensions"
+        default=['.wav', '.flac', '.mp3', '.m4a'], description='Supported audio file extensions'
     )
+
+
+class AqueductConfig(BaseModel):
+    """Configuration for Aqueduct flow"""
+
+    batch_timeout: float = Field(default=10.0, description='Batch timeout for Aqueduct flow')
+    batch_size: int = Field(default=20, description='Batch size for Aqueduct flow')
 
 
 class ModelConfig(BaseModel):
